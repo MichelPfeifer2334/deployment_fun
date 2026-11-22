@@ -1,24 +1,41 @@
 variables:
   IMAGE_NAME: mp123456789/test-repo
-  IMAGE_TAG: python-app-1.0
+  BACKEND_TAG: backend-1.0
+  FRONTEND_TAG: frontend-1.0
   DOCKER_TLS_CERTDIR: "/certs"
 
+stages:
+  - test
+  - build
+
 run_tests:
+  stage: test
   image: python:3.12-slim-trixie
   before_script:
-    - apt-get update
     - cd backend
     - pip install poetry
     - poetry install
   script:
     - poetry run pytest
 
-build_image:
+build_backend:
+  stage: build
   image: docker:29.10.0-cli
   services:
     - docker:29.10.0-dind
   before_script:
-    - docker login -u $REGISTRY_USER -p $REGISTRY_PASSWORD
+    - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin
   script:
-  - docker build -t $IMAGE_NAME:$IMAGE_TAG .
-  - docker push $IMAGE_NAME:$IMAGE_TAG
+    - docker build -t $IMAGE_NAME:$BACKEND_TAG backend
+    - docker push $IMAGE_NAME:$BACKEND_TAG
+
+build_frontend:
+  stage: build
+  image: docker:29.10.0-cli
+  services:
+    - docker:29.10.0-dind
+  before_script:
+    - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin
+  script:
+    - docker build -t $IMAGE_NAME:$FRONTEND_TAG frontend
+    - docker push $IMAGE_NAME:$FRONTEND_TAG
